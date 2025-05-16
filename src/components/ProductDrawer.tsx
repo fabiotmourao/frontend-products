@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useProductContext } from '../context/ProductContext';
+import { Product } from '../types/product';
 
 interface DrawerProps {
   isOpen: boolean;
@@ -10,166 +11,146 @@ interface DrawerProps {
 export default function ProductDrawer({ isOpen, onClose }: DrawerProps) {
   const { setProducts } = useProductContext();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
     nome: '',
     categoria: '',
-    preco: '',
+    preco: 0,
     descricao: '',
     imagem: '',
   });
 
-  const [imagemPreview, setImagemPreview] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [useManualUrl, setUseManualUrl] = useState(false);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagemPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'preco' ? Number(value) || 0 : value,
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const { nome, categoria, preco, descricao, imagem } = formData;
-
-    if (!nome || !categoria || !preco || !descricao || (!uploadFile && !imagem)) {
-      toast.error('Preencha todos os campos!');
-      return;
-    }
-
-    if (nome.length < 2 || categoria.length < 2 || descricao.length < 5) {
-      toast.error('Todos os campos devem ter um tamanho mínimo válido.');
-      return;
-    }
-
-    const precoValid = /^\d+(\.\d{1,2})?$/.test(preco);
-    if (!precoValid) {
-      toast.error('Preço deve ser um número decimal válido.');
-      return;
-    }
-
-    const novoProduto = {
+    
+    const newProduct: Product = {
+      ...formData,
       id: Date.now(),
-      nome,
-      categoria,
-      preco: parseFloat(preco),
-      descricao,
-      imagem: uploadFile ? imagemPreview : imagem,
     };
 
-    setProducts(prev => [novoProduto, ...prev]);
+    setProducts((prev) => [...prev, newProduct]);
     toast.success('Produto cadastrado com sucesso!');
-    setFormData({ nome: '', categoria: '', preco: '', descricao: '', imagem: '' });
-    setUploadFile(null);
-    setImagemPreview('');
-    setUseManualUrl(false);
     onClose();
+    setFormData({
+      nome: '',
+      categoria: '',
+      preco: 0,
+      descricao: '',
+      imagem: '',
+    });
   };
 
   return (
     <div
-      className={`fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50 ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
+      className={`fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity ${
+        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
     >
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-xl font-semibold">Novo Produto</h2>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-900 text-xl">×</button>
-      </div>
+      <div
+        className={`fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold">Cadastrar Produto</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
-        {['nome', 'categoria', 'preco', 'descricao'].map((field) => (
-          <div key={field}>
-            <label className="block text-sm font-medium mb-1 capitalize">{field}</label>
-            {field !== 'descricao' ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome
+              </label>
               <input
-                type={field === 'preco' ? 'number' : 'text'}
-                name={field}
-                value={(formData as any)[field]}
+                type="text"
+                name="nome"
+                value={formData.nome}
                 onChange={handleChange}
                 className="w-full border border-gray-300 rounded px-3 py-2"
+                required
               />
-            ) : (
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Categoria
+              </label>
+              <input
+                type="text"
+                name="categoria"
+                value={formData.categoria}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Preço
+              </label>
+              <input
+                type="number"
+                name="preco"
+                value={formData.preco}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                step="0.01"
+                min="0"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descrição
+              </label>
               <textarea
-                name={field}
+                name="descricao"
                 value={formData.descricao}
                 onChange={handleChange}
                 className="w-full border border-gray-300 rounded px-3 py-2"
+                rows={3}
+                required
               />
-            )}
-          </div>
-        ))}
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Imagem do Produto</label>
-
-          <div className="flex items-center gap-4 mb-2">
-            <label className="inline-flex items-center gap-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                URL da Imagem
+              </label>
               <input
-                type="radio"
-                checked={!useManualUrl}
-                onChange={() => setUseManualUrl(false)}
+                type="url"
+                name="imagem"
+                value={formData.imagem}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
               />
-              Upload
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="radio"
-                checked={useManualUrl}
-                onChange={() => setUseManualUrl(true)}
-              />
-              URL manual
-            </label>
-          </div>
+            </div>
 
-          {!useManualUrl ? (
-            <>
-              <input type="file" accept="image/*" onChange={handleImageChange} className="w-full" />
-              {imagemPreview && (
-                <img
-                  src={imagemPreview}
-                  alt="Preview"
-                  className="mt-2 w-24 h-24 object-cover rounded"
-                />
-              )}
-            </>
-          ) : (
-            <input
-              type="text"
-              name="imagem"
-              value={formData.imagem}
-              onChange={handleChange}
-              placeholder="Ex: /images/exemplo.jpg"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-            />
-          )}
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+            >
+              Cadastrar
+            </button>
+          </form>
         </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Salvar
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }
